@@ -21,7 +21,7 @@ class InterimPhoto: NSObject {
             return nil
         }
         
-        for i in 0..<willSortPhoto.count {
+        for i in 0..<willSortPhoto.count { // n
             
             let referencePhoto = willSortPhoto[i]
             var subArray = [PHAsset]()
@@ -30,9 +30,8 @@ class InterimPhoto: NSObject {
             if referencePhoto.tagHit {
                 continue
             }
-            let sortPhotoOne = Date.init().timeIntervalSince1970
 
-            for j in i+1..<willSortPhoto.count {
+            for j in i+1..<willSortPhoto.count { // n-1
                 
                 let contrastPhoto = willSortPhoto[j]
 
@@ -44,7 +43,8 @@ class InterimPhoto: NSObject {
                 if contrastPhoto.tagHit  {
                     continue
                 }
-                let hanmingDistance = referencePhoto.hanmingDistance(contrastPhoto)
+                
+                let hanmingDistance = referencePhoto.hanmingDistance(contrastPhoto) // 64 * 64
                 if hanmingDistance < 10 {
                     subArray.append(contrastPhoto.asset!)
                     referencePhoto.tagHit = true
@@ -55,11 +55,9 @@ class InterimPhoto: NSObject {
             if subArray.count > 1{
                 resultArr.append(subArray)
             }
-            print("对比一组费时\( Date.init().timeIntervalSince1970 - sortPhotoOne) 总数\(willSortPhoto.count)")
-
         }
         
-        return resultArr
+        return resultArr.isEmpty ? nil : resultArr
     }
     
     class private func allowWithin(time:Int,reference:PHAsset?,contrast:PHAsset?) -> Bool{
@@ -73,7 +71,7 @@ class InterimPhoto: NSObject {
     
     func hanmingDistance(_ contrast:InterimPhoto) -> Int {
         guard self.dhashValue != nil && contrast.dhashValue != nil else {
-            return 1 << 4
+            return 11
         }
         let maxHanmingDistance = 10 //小于这个距离才算相似
         let maxPixelNumber = 64 //8*8 最大64个点
