@@ -77,12 +77,15 @@ class ViewController: UIViewController {
     
     func loadAllSimilarData(finishCallback:(()->())?) {
         loadAllSimilarDataDispatchQueue.async {
-            SimilarPhotoHelper.shared.reloadPhoto()
-            DispatchQueue.main.async {
-                if let handle = finishCallback {
-                    handle()
+            
+            SimilarPhotoHelper.shared.reloadPhoto {
+                DispatchQueue.main.async {
+                    if let handle = finishCallback {
+                        handle()
+                    }
                 }
             }
+            
         }
     }
     

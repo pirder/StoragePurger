@@ -32,7 +32,7 @@ class SimilarPhotoHelper: NSObject {
     var resultDhashImages: [Int :[InterimPhoto]] = [Int : [InterimPhoto]]()
     var similarlyAllImages: [Int : [[PHAsset]] ] = [Int : [[PHAsset]] ]()
     
-    func reloadPhoto() {
+    func reloadPhoto(completion: @escaping ()->Void) {
         // 1. 获取 所有的照片, 根据创建时间降序排序
         let optscols = PHFetchOptions()
         // 按照创建时间倒序排列
@@ -57,10 +57,10 @@ class SimilarPhotoHelper: NSObject {
         print("获取所有的相册 时间\(Date().timeIntervalSince1970 - timeTagCol)")
         
         let dhashAllPhotoTag = Date.init().timeIntervalSince1970
-        let group = DispatchGroup.init()
+        
         //防止多线程数据写入问题
         let semaphore = DispatchSemaphore.init(value: 1)
-        group.enter()
+        
         for assetArray in self.tempAllImages {
             autoreleasepool {
                 concureentQueue.asyncBlock { [weak self] in
@@ -83,47 +83,51 @@ class SimilarPhotoHelper: NSObject {
                 }
             }
         }
-        concureentQueue.notify {
-            group.leave()
-        }
-        group.wait()
-        print("获取所有的相片 dhash 时间 \(Date().timeIntervalSince1970 - dhashAllPhotoTag)")
         
-        let sortPhoto = Date.init().timeIntervalSince1970
-        
-        group.enter()
-        for (key,photos) in self.resultDhashImages {
+        concureentQueue.notify { [weak self] in
+            guard let `self` = self else {return}
             
-            //            let sortPhotoOne = Date.init().timeIntervalSince1970
-            concureentQueue.asyncBlock { [weak self] in
-                guard let `self` = self else {return}
-                if let asset = InterimPhoto.sortPhoto(willSortPhoto: photos) {
-                    if self.similarlyAllImages.keys.contains(key) {
-                        if let old = self.similarlyAllImages[key] {
-                            self.similarlyAllImages[key] = old + asset
+            print("获取所有的相片 dhash 时间 \(Date().timeIntervalSince1970 - dhashAllPhotoTag)")
+            
+            let sortPhoto = Date.init().timeIntervalSince1970
+            
+            for (key,photos) in self.resultDhashImages {
+                
+                self.concureentQueue.asyncBlock { [weak self] in
+                    guard let `self` = self else {return}
+                    autoreleasepool {
+                        if let asset = InterimPhoto.sortPhoto(willSortPhoto: photos) {
+                            if self.similarlyAllImages.keys.contains(key) {
+                                if let old = self.similarlyAllImages[key] {
+                                    self.similarlyAllImages[key] = old + asset
+                                }
+                            }else{
+                                self.similarlyAllImages[key] = asset
+                            }
                         }
-                    }else{
-                        self.similarlyAllImages[key] = asset
+                        
                     }
                 }
+                
             }
-            //            print("对比一组费时\( Date.init().timeIntervalSince1970 - sortPhotoOne) 总数\(cols.count)")
+            
+            self.concureentQueue.notify { [weak self] in
+                guard let `self` = self else {return}
+                
+                print("对比费时\( Date.init().timeIntervalSince1970 - sortPhoto) 总数\(cols.count)")
+                
+                self.resultDhashImages.forEach { (item) in
+                    item.value.forEach {
+                        $0.dhashValue?.deallocate()
+                    }
+                }
+                self.tempAllImages.removeAll()
+                self.resultDhashImages.removeAll()
+                completion()
+                
+            }
             
         }
-        concureentQueue.notify {
-            group.leave()
-        }
-        group.wait()
-
-        print("对比费时\( Date.init().timeIntervalSince1970 - sortPhoto) 总数\(cols.count)")
-        
-        resultDhashImages.forEach { (item) in
-            item.value.forEach {
-                $0.dhashValue?.deallocate()
-            }
-        }
-        tempAllImages.removeAll()
-        resultDhashImages.removeAll()
         
     }
     
